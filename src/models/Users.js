@@ -29,10 +29,43 @@ const userSchema = new mongoose.Schema({
     },
     privilege: {
     type: String,
-    enum: ['student', 'admin'],
+    enum: ['student', 'admin', 'superadmin'],
     required: true,
     default: 'student'
-    }
+    },
+
+
+    gamification: {
+
+        totalXP: {
+        type: Number,
+        default: 0
+        },
+        level: {
+        type: Number,
+        default: 1
+        },
+        badges: [{
+        name: String,
+        icon: String,
+        unlockedAt: Date
+        }],
+        achievements: [{
+        name: String,
+        description: String,
+        unlockedAt: Date
+        }],
+        currentStreak: {
+        type: Number,
+        default: 0
+        },
+        longestStreak: {
+        type: Number,
+        default: 0
+        }
+        
+  }
+    
 }, {timestamps: true});
 
 userSchema.pre("save", async function(next) {
@@ -48,6 +81,34 @@ userSchema.pre("save", async function(next) {
 //compares password with hashed password
 userSchema.methods.comparePassword = async function(userPassword) {
     return await bcrypt.compare(userPassword,this.password);
+};
+
+userSchema.statics.updateSchema = async function(newSectionName) {
+  try {
+    // Get the current enum values
+    const enumValues = this.schema.path('section').enumValues;
+    
+    // Add new value if it doesn't exist
+    if (!enumValues.includes(newSectionName)) {
+      // Add the new value to the enum
+      this.schema.path('section').enumValues.push(newSectionName);
+      
+      // You might need to update any existing validation logic here
+      this.schema.path('section').validators = [
+        {
+          validator: function(v) {
+            return this.schema.path('section').enumValues.includes(v);
+          },
+          message: props => `${props.value} is not a valid section!`
+        }
+      ];
+    }
+    
+    return true;
+  } catch (error) {
+    console.error("Error updating user schema:", error);
+    return false;
+  }
 };
 
 const User = mongoose.model("User", userSchema);
